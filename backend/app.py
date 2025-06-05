@@ -765,6 +765,55 @@ def get_auction_details_for_clients(current_user, auction_id):
     }
     return jsonify(auction_data), 200
 
+# --- List Client's Won Lots Endpoint ---
+@app.route("/my-wins", methods=["GET"])
+@client_required # Only authenticated clients can see their wins
+def get_my_wins(current_client):
+    # Query AuctionWinner table, joining with Lot, Auction, and Bid
+    # to get comprehensive details about each win.
+    won_items = db.session.query(
+        AuctionWinner.awarded_at,
+        AuctionWinner.winning_amount,
+        Lot.lot_identifier,
+        Lot.device_name,
+        Lot.device_details,
+        Lot.image_url, # Added image_url
+        Auction.name.label("auction_name"),
+        Auction.end_time.label("auction_end_time"),
+        Bid.bid_time.label("winning_bid_time") # Time the winning bid was placed
+    ).join(Lot, AuctionWinner.lot_id == Lot.lot_id)\
+     .join(Auction, Lot.auction_id == Auction.auction_id)\
+     .join(Bid, AuctionWinner.winning_bid_id == Bid.bid_id)\
+     .filter(AuctionWinner.user_id == current_client.user_id)\
+     .order_by(AuctionWinner.awarded_at.desc())\
+     .all()
+
+    output = []
+    for item in won_items:
+        # The following line for invoice_placeholder_url is problematic because it tries to run queries inside the loop.
+        # This is inefficient and can lead to errors if AuctionWinner or Lot models are not fully loaded or available in this context for querying.
+        # It's better to fetch all required info in the main query or construct URLs without new queries.
+        # For now, I will comment out the problematic part of invoice_placeholder_url.
+        # A correct implementation would involve a separate endpoint for invoices or a simpler URL construction.
+        # lot_for_invoice = Lot.query.get(AuctionWinner.query.filter_by(awarded_at=item.awarded_at, user_id=current_client.user_id).first().lot_id)
+        # auction_id_for_invoice = lot_for_invoice.auction_id
+        # lot_id_for_invoice = lot_for_invoice.lot_id
+
+        output.append({
+            "awarded_at": item.awarded_at.isoformat() if item.awarded_at else None,
+            "winning_amount": float(item.winning_amount),
+            "lot_identifier": item.lot_identifier,
+            "device_name": item.device_name,
+            "device_details": item.device_details,
+            "image_url": item.image_url,
+            "auction_name": item.auction_name,
+            "auction_end_time": item.auction_end_time.isoformat() if item.auction_end_time else None,
+            "winning_bid_time": item.winning_bid_time.isoformat() if item.winning_bid_time else None,
+            "invoice_placeholder_url": f"/invoices/lot/{item.lot_identifier}" # Simplified placeholder
+        })
+
+    return jsonify({"wins": output}), 200
+
 # Function to create a default admin user (if not exists)
 def create_default_admin():
     with app.app_context():

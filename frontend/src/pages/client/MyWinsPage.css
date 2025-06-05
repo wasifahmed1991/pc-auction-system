@@ -1,0 +1,66 @@
+.my-wins-page {
+  padding: 20px;
+}
+
+.my-wins-page h2 {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.wins-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.win-card {
+  background-color: #e6ffed; /* Light green background for wins */
+  border: 1px solid #c3e6cb; /* Green border */
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.win-card h4 {
+  margin-top: 0;
+  color: #155724; /* Dark green text */
+}
+
+.win-card p {
+  font-size: 0.95em;
+  margin-bottom: 8px;
+}
+
+.win-lot-image {
+  max-width: 100%;
+  height: auto;
+  max-height: 150px;
+  object-fit: contain;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  background-color: #f8f9fa; /* Light background for image area */
+}
+
+.invoice-button {
+  margin-top: 10px;
+  padding: 8px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.invoice-button:hover {
+  background-color: #0056b3;
+}
+
+.loading-message, .error-message {
+  text-align: center;
+  font-size: 1.1em;
+  padding: 20px;
+}
+.error-message { color: red; }
