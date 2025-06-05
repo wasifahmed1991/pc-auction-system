@@ -603,6 +603,168 @@ def get_my_bids(current_client):
 
     return jsonify({"bids": output}), 200
 
+# --- Auction Status Processing Endpoint (Admin) ---
+@app.route("/admin/auctions/process-statuses", methods=["POST"])
+@admin_required
+def process_auction_statuses(current_admin):
+    now = datetime.datetime.now(timezone.utc)
+    updated_count = 0
+
+    # Process scheduled auctions to active
+    scheduled_auctions = Auction.query.filter_by(status="scheduled").all()
+    for auction in scheduled_auctions:
+        if auction.start_time <= now and auction.end_time > now:
+            auction.status = "active"
+            db.session.add(auction)
+            updated_count += 1
+
+    # Process active auctions to closed
+    active_auctions = Auction.query.filter_by(status="active").all()
+    for auction in active_auctions:
+        if auction.end_time <= now:
+            auction.status = "closed"
+            db.session.add(auction)
+            updated_count += 1
+
+    db.session.commit()
+    return jsonify({"message": f"Processed auction statuses. {updated_count} auctions updated."}), 200
+
+# --- Winner Determination Endpoint (Admin) ---
+@app.route("/admin/auctions/<int:auction_id>/determine-winners", methods=["POST"])
+@admin_required
+def determine_winners_endpoint(current_admin, auction_id):
+    auction = Auction.query.get_or_404(auction_id)
+
+    if auction.status != "closed":
+        return jsonify({"message": "Winners can only be determined for closed auctions."}), 400
+
+    lots_processed = 0
+    winners_determined = 0
+
+    for lot in auction.lots:
+        lots_processed += 1
+
+        winning_bid = Bid.query.filter_by(lot_id=lot.lot_id)\
+            .join(User, User.user_id == Bid.user_id)\
+            .filter(User.is_active == True)\
+            .order_by(Bid.bid_amount.desc(), Bid.bid_time.asc())\
+            .first()
+
+        if winning_bid:
+            AuctionWinner.query.filter_by(lot_id=lot.lot_id).delete()
+            db.session.flush()
+
+            new_winner = AuctionWinner(
+                lot_id=lot.lot_id,
+                user_id=winning_bid.user_id,
+                winning_bid_id=winning_bid.bid_id,
+                winning_amount=winning_bid.bid_amount,
+                awarded_at=datetime.datetime.now(timezone.utc)
+            )
+            db.session.add(new_winner)
+            winners_determined += 1
+
+            all_bids_for_lot = Bid.query.filter_by(lot_id=lot.lot_id).all()
+            for b in all_bids_for_lot:
+                if b.bid_id == winning_bid.bid_id:
+                    b.status = "winning"
+                else:
+                    b.status = "outbid"
+                db.session.add(b)
+        else:
+            all_bids_for_lot = Bid.query.filter_by(lot_id=lot.lot_id).all()
+            for b in all_bids_for_lot:
+                b.status = "lost"
+                db.session.add(b)
+
+    db.session.commit()
+    return jsonify({
+        "message": f"Winner determination complete for auction {auction.name}.",
+        "lots_processed": lots_processed,
+        "winners_determined": winners_determined
+    }), 200
+
+# --- Client-Facing Auction Endpoints ---
+@app.route("/auctions", methods=["GET"])
+@token_required
+def get_active_auctions_for_clients(current_user):
+    carrier_filter = request.args.get("carrier_id")
+    query = Auction.query.filter_by(status="active", is_visible=True)
+
+    if carrier_filter:
+        try:
+            carrier_id_int = int(carrier_filter)
+            query = query.filter_by(carrier_id=carrier_id_int)
+        except ValueError:
+            return jsonify({"message": "Invalid carrier_id format."}), 400
+
+    auctions = query.order_by(Auction.end_time.asc()).all()
+
+    output = []
+    auctions_by_carrier = {}
+
+    for auction in auctions:
+        auction_data = {
+            "auction_id": auction.auction_id,
+            "name": auction.name,
+            "carrier_id": auction.carrier_id,
+            "carrier_name": auction.carrier.name if auction.carrier else "Unknown Carrier",
+            "start_time": auction.start_time.isoformat() if auction.start_time else None,
+            "end_time": auction.end_time.isoformat() if auction.end_time else None,
+            "grading_guide": auction.grading_guide,
+            "lot_count": len(auction.lots)
+        }
+        if auction.carrier.name not in auctions_by_carrier:
+            auctions_by_carrier[auction.carrier.name] = {
+                "carrier_id": auction.carrier_id,
+                "carrier_name": auction.carrier.name,
+                "auctions": []
+            }
+        auctions_by_carrier[auction.carrier.name]["auctions"].append(auction_data)
+
+    for auction in auctions:
+         output.append({
+            "auction_id": auction.auction_id,
+            "name": auction.name,
+            "carrier_id": auction.carrier_id,
+            "carrier_name": auction.carrier.name if auction.carrier else "Unknown Carrier",
+            "start_time": auction.start_time.isoformat() if auction.start_time else None,
+            "end_time": auction.end_time.isoformat() if auction.end_time else None,
+            "grading_guide": auction.grading_guide,
+            "lot_count": len(auction.lots)
+        })
+
+    return jsonify({"auctions_list": output, "auctions_by_carrier": auctions_by_carrier }), 200
+
+@app.route("/auctions/<int:auction_id>", methods=["GET"])
+@token_required
+def get_auction_details_for_clients(current_user, auction_id):
+    auction = Auction.query.filter_by(auction_id=auction_id, status="active", is_visible=True).first_or_404()
+
+    lots_data = []
+    for lot in auction.lots:
+        lots_data.append({
+            "lot_id": lot.lot_id,
+            "lot_identifier": lot.lot_identifier,
+            "device_name": lot.device_name,
+            "device_details": lot.device_details,
+            "image_url": lot.image_url,
+            "condition": lot.condition,
+            "quantity": lot.quantity,
+            "min_bid": float(lot.min_bid) if lot.min_bid is not None else None
+        })
+
+    auction_data = {
+        "auction_id": auction.auction_id,
+        "name": auction.name,
+        "carrier_name": auction.carrier.name if auction.carrier else "Unknown Carrier",
+        "start_time": auction.start_time.isoformat() if auction.start_time else None,
+        "end_time": auction.end_time.isoformat() if auction.end_time else None,
+        "grading_guide": auction.grading_guide,
+        "lots": lots_data
+    }
+    return jsonify(auction_data), 200
+
 # Function to create a default admin user (if not exists)
 def create_default_admin():
     with app.app_context():
