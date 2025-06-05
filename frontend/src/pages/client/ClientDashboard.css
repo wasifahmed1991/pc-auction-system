@@ -1,0 +1,77 @@
+.client-dashboard {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: sans-serif;
+}
+
+.dashboard-header {
+  background-color: #333;
+  color: white;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard-header .logo-area h1 {
+  margin: 0;
+  font-size: 1.5em;
+}
+
+.dashboard-nav a {
+  color: white;
+  margin: 0 15px;
+  text-decoration: none;
+  font-size: 1em;
+}
+
+.dashboard-nav a:hover, .dashboard-nav a.active {
+  text-decoration: underline;
+}
+
+.user-profile-area {
+  font-size: 0.9em;
+}
+.user-profile-area span {
+  margin-right: 15px;
+}
+.user-profile-area .deposit-status {
+  font-style: italic;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background-color: #555;
+}
+.logout-button {
+  background-color: #d9534f;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.logout-button:hover { background-color: #c9302c; }
+
+.dashboard-content {
+  flex-grow: 1;
+  padding: 20px;
+  background-color: #f4f7f6;
+}
+
+.warning-banner {
+  background-color: #fff3cd; /* Light yellow */
+  color: #856404; /* Dark yellow text */
+  padding: 15px;
+  border: 1px solid #ffeeba;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.dashboard-footer {
+  text-align: center;
+  padding: 10px;
+  background-color: #eee;
+  font-size: 0.8em;
+  border-top: 1px solid #ccc;
+}

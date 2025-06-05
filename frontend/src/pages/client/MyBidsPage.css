@@ -1,0 +1,57 @@
+.my-bids-page {
+  padding: 20px;
+}
+
+.my-bids-page h2 {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.bids-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.bid-card {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.bid-card h4 {
+  margin-top: 0;
+  color: #0056b3;
+}
+
+.bid-card p {
+  font-size: 0.95em;
+  margin-bottom: 8px;
+}
+
+.bid-status, .auction-status {
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: white;
+  display: inline-block;
+  text-transform: capitalize;
+}
+
+.status-winning { background-color: #28a745; /* Green */ }
+.status-outbid { background-color: #dc3545; /* Red */ }
+.status-active { background-color: #007bff; /* Blue */ }
+.status-lost { background-color: #6c757d; /* Grey */ }
+
+.auction-status.active { background-color: #ffc107; color: #333; }
+.auction-status.closed { background-color: #6c757d; }
+.auction-status.scheduled { background-color: #17a2b8; }
+
+.loading-message, .error-message {
+  text-align: center;
+  font-size: 1.1em;
+  padding: 20px;
+}
+.error-message { color: red; }
